@@ -1,0 +1,71 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+mat-toolbar {
+  gap: 0.5rem;
+}
+
+.brand {
+  color: inherit;
+  font: var(--mat-sys-title-large);
+  text-decoration: none;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mobile-menu-trigger {
+  display: none;
+}
+
+.identity {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+main {
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 2rem 1rem;
+}
+
+:host a:focus-visible,
+:host button:focus-visible,
+:host input:focus-visible,
+:host select:focus-visible,
+:host textarea:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 37.5rem) {
+  mat-toolbar {
+    height: auto;
+    min-height: var(--mat-toolbar-standard-height, 64px);
+    flex-wrap: wrap;
+    padding-block: 0.5rem;
+  }
+
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-menu-trigger {
+    display: inline-flex;
+  }
+
+  main {
+    padding: 1rem .75rem;
+  }
+}

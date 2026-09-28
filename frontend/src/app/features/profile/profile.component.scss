@@ -1,0 +1,120 @@
+:host {
+  display: block;
+}
+
+.profile-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+header h1,
+header p,
+h2,
+.status,
+.error,
+.empty {
+  margin-top: 0;
+}
+
+header p,
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+mat-card-content,
+form,
+.enrollment {
+  display: grid;
+  gap: 0.75rem;
+}
+
+mat-card-content {
+  padding-top: 1.25rem;
+}
+
+form {
+  align-items: start;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.two-factor {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.enrollment {
+  margin-top: 1rem;
+}
+
+.enrollment img {
+  max-width: 100%;
+  height: auto;
+}
+
+.manual-label {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+code {
+  display: block;
+  max-width: 100%;
+  padding: 0.75rem;
+  overflow-wrap: anywhere;
+  border-radius: 0.25rem;
+  background: var(--mat-sys-surface-container);
+}
+
+.actions,
+.loading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.loading {
+  justify-content: center;
+  padding-block: 3rem;
+}
+
+.status {
+  color: var(--mat-sys-primary);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}
+
+.danger {
+  border-color: var(--mat-sys-error);
+}
+
+.delete-button {
+  color: var(--mat-sys-on-error);
+  background: var(--mat-sys-error);
+}
+
+@media (max-width: 48rem) {
+  .section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wide {
+    grid-column: auto;
+  }
+}

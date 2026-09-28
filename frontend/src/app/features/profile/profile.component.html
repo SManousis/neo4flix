@@ -1,0 +1,254 @@
+<section class="profile-page" aria-labelledby="profile-page-title">
+  <header>
+    <h1 id="profile-page-title">Profile and security</h1>
+    <p>Manage your public name, sign-in security, ratings, and account.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="loading" role="status" aria-label="Loading profile">
+      <mat-spinner diameter="36" />
+      <span>Loading profile…</span>
+    </div>
+  } @else if (loadError()) {
+    <p class="error" role="alert">{{ loadError() }}</p>
+  } @else if (!profile()) {
+    <p class="empty" role="status">Profile information is unavailable.</p>
+  } @else {
+    <div class="section-grid">
+      <mat-card appearance="outlined" aria-labelledby="profile-section-title">
+        <mat-card-header>
+          <mat-card-title id="profile-section-title">Profile</mat-card-title>
+          <mat-card-subtitle>Your display name is visible to you throughout Neo4flix.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (profileStatus()) {
+            <p class="status" role="status">{{ profileStatus() }}</p>
+          }
+          @if (profileError()) {
+            <p class="error" role="alert">{{ profileError() }}</p>
+          }
+          <form data-testid="profile-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+            <mat-form-field appearance="outline">
+              <mat-label>Display name</mat-label>
+              <input
+                matInput
+                data-testid="profile-display-name"
+                formControlName="displayName"
+                autocomplete="name"
+                maxlength="100"
+              />
+              @if (profileForm.controls.displayName.touched && profileForm.controls.displayName.invalid) {
+                <mat-error>Enter a display name up to 100 characters.</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Email</mat-label>
+              <input
+                matInput
+                data-testid="profile-email"
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                readonly
+              />
+              <mat-hint>Email cannot be changed here.</mat-hint>
+            </mat-form-field>
+            <button mat-flat-button type="submit" [disabled]="profileForm.invalid || profileBusy()">
+              {{ profileBusy() ? 'Saving…' : 'Save profile' }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="wide" aria-labelledby="security-section-title">
+        <mat-card-header>
+          <mat-card-title id="security-section-title">Security</mat-card-title>
+          <mat-card-subtitle>Change your password and manage two-factor authentication.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (securityStatus()) {
+            <p class="status" role="status">{{ securityStatus() }}</p>
+          }
+          @if (securityError()) {
+            <p class="error" role="alert">{{ securityError() }}</p>
+          }
+
+          <section aria-labelledby="password-title">
+            <h2 id="password-title">Change password</h2>
+            <form data-testid="password-form" [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+              <mat-form-field appearance="outline">
+                <mat-label>Current password</mat-label>
+                <input matInput data-testid="current-password" type="password" formControlName="currentPassword" autocomplete="current-password" maxlength="128" />
+                @if (passwordForm.controls.currentPassword.touched && passwordForm.controls.currentPassword.invalid) {
+                  <mat-error>Enter your current password.</mat-error>
+                }
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>New password</mat-label>
+                <input matInput data-testid="new-password" type="password" formControlName="newPassword" autocomplete="new-password" maxlength="128" />
+                @if (passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.invalid) {
+                  <mat-error>Use 10–128 characters with uppercase, lowercase, number, and special character.</mat-error>
+                }
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Confirm new password</mat-label>
+                <input matInput data-testid="confirm-new-password" type="password" formControlName="confirmation" autocomplete="new-password" maxlength="128" />
+                @if (passwordForm.controls.confirmation.touched && passwordForm.controls.confirmation.hasError('required')) {
+                  <mat-error>Confirm your new password.</mat-error>
+                } @else if (passwordForm.controls.confirmation.touched && passwordForm.hasError('passwordMismatch')) {
+                  <mat-error>Passwords must match.</mat-error>
+                }
+              </mat-form-field>
+              @if (profile()?.twoFactorEnabled) {
+                <mat-form-field appearance="outline">
+                  <mat-label>Authentication code</mat-label>
+                  <input matInput data-testid="password-totp-code" formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" />
+                  <mat-hint>Required when two-factor authentication is enabled.</mat-hint>
+                  @if (passwordForm.controls.code.touched && passwordForm.controls.code.invalid) {
+                    <mat-error>Enter exactly six digits.</mat-error>
+                  }
+                </mat-form-field>
+              }
+              <button mat-flat-button type="submit" [disabled]="passwordForm.invalid || passwordBusy()">
+                {{ passwordBusy() ? 'Changing…' : 'Change password' }}
+              </button>
+            </form>
+          </section>
+
+          <section class="two-factor" aria-labelledby="two-factor-title">
+            <h2 id="two-factor-title">Two-factor authentication</h2>
+            <p>
+              Status:
+              <strong>{{ profile()?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}</strong>
+            </p>
+
+            @if (!profile()?.twoFactorEnabled && !enrollment()) {
+              <button mat-stroked-button data-testid="setup-2fa" type="button" [disabled]="twoFactorBusy()" (click)="setupTwoFactor()">
+                {{ twoFactorBusy() ? 'Preparing…' : 'Enable 2FA' }}
+              </button>
+            }
+
+            @if (enrollment(); as setup) {
+              <div data-testid="totp-enrollment" class="enrollment">
+                <p>Scan this QR code with your authenticator app, or enter the setup URI manually.</p>
+                <img [src]="setup.qrCodeDataUrl" alt="Two-factor authenticator enrollment QR code" width="220" height="220" />
+                <p class="manual-label" id="manual-code-label">Manual setup URI</p>
+                <code aria-labelledby="manual-code-label">{{ setup.otpauthUri }}</code>
+                <p>Complete setup before {{ setup.expiresAt }}.</p>
+                <form data-testid="confirm-totp-form" [formGroup]="confirmTotpForm" (ngSubmit)="confirmTwoFactor()">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Authentication code</mat-label>
+                    <input matInput data-testid="confirm-totp-code" formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" />
+                    @if (confirmTotpForm.controls.code.touched && confirmTotpForm.controls.code.invalid) {
+                      <mat-error>Enter exactly six digits.</mat-error>
+                    }
+                  </mat-form-field>
+                  <div class="actions">
+                    <button mat-flat-button type="submit" [disabled]="confirmTotpForm.invalid || twoFactorBusy()">Confirm 2FA</button>
+                    <button mat-button type="button" (click)="cancelEnrollment()">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            }
+
+            @if (profile()?.twoFactorEnabled) {
+              <form data-testid="disable-2fa-form" [formGroup]="disableTwoFactorForm" (ngSubmit)="disableTwoFactor()">
+                <mat-form-field appearance="outline">
+                  <mat-label>Current password</mat-label>
+                  <input matInput data-testid="disable-password" type="password" formControlName="password" autocomplete="current-password" maxlength="128" />
+                  @if (disableTwoFactorForm.controls.password.touched && disableTwoFactorForm.controls.password.invalid) {
+                    <mat-error>Enter your current password.</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Authentication code</mat-label>
+                  <input matInput data-testid="disable-totp-code" formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" />
+                  @if (disableTwoFactorForm.controls.code.touched && disableTwoFactorForm.controls.code.invalid) {
+                    <mat-error>Enter exactly six digits.</mat-error>
+                  }
+                </mat-form-field>
+                <button mat-stroked-button data-testid="disable-2fa" type="submit" [disabled]="disableTwoFactorForm.invalid || twoFactorBusy()">
+                  {{ twoFactorBusy() ? 'Disabling…' : 'Disable 2FA' }}
+                </button>
+              </form>
+            }
+          </section>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" id="ratings" aria-labelledby="ratings-section-title">
+        <mat-card-header>
+          <mat-card-title id="ratings-section-title">Ratings</mat-card-title>
+          <mat-card-subtitle>Review and update the movies you have rated.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (ratingsLoading()) {
+            <p class="empty" role="status">Loading rating history…</p>
+          } @else if (ratingsError()) {
+            <p class="error" role="alert">{{ ratingsError() }}</p>
+          } @else if (!ratingHistory()?.content?.length) {
+            <p class="empty" role="status">You have not rated any movies yet.</p>
+          } @else {
+            <ul data-testid="rating-history">
+              @for (entry of ratingHistory()?.content; track entry.movieId) {
+                <li>
+                  <a [routerLink]="['/movies', entry.movieId]">{{ entry.movieTitle }}</a>
+                  <span aria-label="Your score">{{ entry.score }} / 5</span>
+                  <a [routerLink]="['/movies', entry.movieId, 'rate']">Edit</a>
+                  <button type="button" [disabled]="ratingsBusy() === entry.movieId" (click)="removeRating(entry)">
+                    {{ ratingsBusy() === entry.movieId ? 'Removing…' : 'Remove' }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+          <div class="actions">
+            <a mat-flat-button data-testid="ratings-link" href="/profile#ratings">View rating history</a>
+            <a mat-button data-testid="watchlist-link" href="/watchlist" routerLink="/watchlist">Open watchlist</a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" class="danger" aria-labelledby="account-section-title">
+        <mat-card-header>
+          <mat-card-title id="account-section-title">Account</mat-card-title>
+          <mat-card-subtitle>Permanently delete your profile and Neo4flix activity.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (accountError()) {
+            <p class="error" role="alert">{{ accountError() }}</p>
+          }
+          <p>This action cannot be undone. Enter your password and type DELETE to confirm.</p>
+          <form data-testid="delete-account-form" [formGroup]="deleteAccountForm" (ngSubmit)="deleteAccount()">
+            <mat-form-field appearance="outline">
+              <mat-label>Current password</mat-label>
+              <input matInput data-testid="delete-password" type="password" formControlName="password" autocomplete="current-password" maxlength="128" />
+              @if (deleteAccountForm.controls.password.touched && deleteAccountForm.controls.password.invalid) {
+                <mat-error>Enter your current password.</mat-error>
+              }
+            </mat-form-field>
+            @if (profile()?.twoFactorEnabled) {
+              <mat-form-field appearance="outline">
+                <mat-label>Authentication code</mat-label>
+                <input matInput data-testid="delete-totp-code" formControlName="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" />
+                @if (deleteAccountForm.controls.code.touched && deleteAccountForm.controls.code.invalid) {
+                  <mat-error>Enter exactly six digits.</mat-error>
+                }
+              </mat-form-field>
+            }
+            <mat-form-field appearance="outline">
+              <mat-label>Type DELETE to confirm</mat-label>
+              <input matInput data-testid="delete-confirmation" formControlName="confirmation" autocomplete="off" spellcheck="false" />
+              @if (deleteAccountForm.controls.confirmation.touched && deleteAccountForm.controls.confirmation.invalid) {
+                <mat-error>Type DELETE exactly to confirm.</mat-error>
+              }
+            </mat-form-field>
+            <button mat-flat-button class="delete-button" type="submit" [disabled]="deleteAccountForm.invalid || deletionBusy()">
+              {{ deletionBusy() ? 'Deleting…' : 'Delete account' }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+</section>

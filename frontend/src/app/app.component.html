@@ -1,0 +1,51 @@
+<mat-toolbar>
+  <a class="brand" routerLink="/">{{ applicationName() }}</a>
+  <span class="toolbar-spacer"></span>
+  <nav class="desktop-nav" aria-label="Primary navigation">
+    @if (authState().status === 'authenticated') {
+      <span class="identity">{{ authState().user?.displayName }}</span>
+      <a mat-button routerLink="/home">Home</a>
+      <a mat-button routerLink="/movies">Movies</a>
+      <a mat-button routerLink="/recommendations">Recommendations</a>
+      <a mat-button routerLink="/watchlist">Watchlist</a>
+      <a mat-button routerLink="/search">Search</a>
+      <a mat-button routerLink="/profile">Profile</a>
+      @if (authState().user?.role === 'ADMIN') {
+        <a mat-button routerLink="/admin">Admin</a>
+      }
+      <button mat-button data-testid="logout" type="button" (click)="logout()">Logout</button>
+    } @else {
+      <a mat-button routerLink="/auth/login">Sign in</a>
+      <a mat-button routerLink="/auth/register">Register</a>
+    }
+  </nav>
+  <button
+    class="mobile-menu-trigger"
+    mat-button
+    type="button"
+    [matMenuTriggerFor]="mobileMenu"
+    aria-label="Open primary navigation menu"
+  >
+    Menu
+  </button>
+</mat-toolbar>
+<mat-menu #mobileMenu="matMenu">
+  @if (authState().status === 'authenticated') {
+    <a mat-menu-item routerLink="/home">Home</a>
+    <a mat-menu-item routerLink="/movies">Movies</a>
+    <a mat-menu-item routerLink="/recommendations">Recommendations</a>
+    <a mat-menu-item routerLink="/watchlist">Watchlist</a>
+    <a mat-menu-item routerLink="/search">Search</a>
+    <a mat-menu-item routerLink="/profile">Profile</a>
+    @if (authState().user?.role === 'ADMIN') {
+      <a mat-menu-item routerLink="/admin">Admin</a>
+    }
+    <button mat-menu-item data-testid="mobile-logout" type="button" (click)="logout()">Logout</button>
+  } @else {
+    <a mat-menu-item routerLink="/auth/login">Sign in</a>
+    <a mat-menu-item routerLink="/auth/register">Register</a>
+  }
+</mat-menu>
+<main aria-live="polite">
+  <router-outlet />
+</main>
