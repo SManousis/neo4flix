@@ -1,0 +1,176 @@
+name: neo4flix
+
+x-service-build: &service-build
+  context: ..
+  dockerfile_inline: |
+    FROM eclipse-temurin:21.0.11_10-jdk-alpine-3.22 AS build
+    WORKDIR /workspace
+    COPY .mvn/ .mvn/
+    COPY mvnw pom.xml ./
+    COPY backend/ backend/
+    COPY database/ database/
+    ARG SERVICE_MODULE
+    RUN sh ./mvnw -B -pl backend/platform-common -am install -DskipTests && \
+        sh ./mvnw -B -pl backend/$${SERVICE_MODULE} -am package -Dmaven.test.skip=true && \
+        cp backend/$${SERVICE_MODULE}/target/$${SERVICE_MODULE}-*.jar /workspace/app.jar
+    FROM eclipse-temurin:21.0.11_10-jre-alpine-3.22
+    WORKDIR /app
+    COPY --from=build --chown=10001:10001 /workspace/app.jar /app/app.jar
+    USER 10001:10001
+    ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+x-service-environment: &service-environment
+  # The host-oriented .env URI cannot be used inside the Compose network.
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_USERNAME: ${NEO4J_USERNAME:?Set NEO4J_USERNAME}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+
+x-protected-service-environment: &protected-service-environment
+  <<: *service-environment
+  NEO4FLIX_ALLOWED_ORIGINS: ${NEO4FLIX_ALLOWED_ORIGINS:?Set NEO4FLIX_ALLOWED_ORIGINS}
+  NEO4FLIX_JWT_PUBLIC_KEY: ${NEO4FLIX_JWT_PUBLIC_KEY:?Set NEO4FLIX_JWT_PUBLIC_KEY}
+  NEO4FLIX_JWT_ISSUER: ${NEO4FLIX_JWT_ISSUER:-neo4flix-user-service}
+  NEO4FLIX_JWT_AUDIENCE: ${NEO4FLIX_JWT_AUDIENCE:-neo4flix-api}
+
+x-user-service-environment: &user-service-environment
+  <<: *protected-service-environment
+  # Nginx is the only trusted reverse proxy in the Compose network; override this CIDR in deployments with a fixed proxy subnet.
+  NEO4FLIX_AUTH_TRUSTED_PROXIES: ${NEO4FLIX_AUTH_TRUSTED_PROXIES:-172.16.0.0/12}
+  NEO4FLIX_JWT_PRIVATE_KEY: ${NEO4FLIX_JWT_PRIVATE_KEY:?Set NEO4FLIX_JWT_PRIVATE_KEY}
+  NEO4FLIX_TOTP_ENCRYPTION_KEY: ${NEO4FLIX_TOTP_ENCRYPTION_KEY:?Set NEO4FLIX_TOTP_ENCRYPTION_KEY}
+  NEO4FLIX_RATING_SERVICE_URL: http://rating-service:8083
+
+x-migrator-build: &migrator-build
+  context: ..
+  dockerfile_inline: |
+    FROM eclipse-temurin:21.0.11_10-jdk-alpine-3.22 AS build
+    WORKDIR /workspace
+    COPY .mvn/ .mvn/
+    COPY mvnw pom.xml ./
+    COPY backend/ backend/
+    COPY database/ database/
+    RUN sh ./mvnw -B -pl database/migrator -am package -DskipTests && \
+        cp database/migrator/target/database-migrator-0.0.1-SNAPSHOT.jar /workspace/app.jar
+    FROM eclipse-temurin:21.0.11_10-jre-alpine-3.22
+    WORKDIR /app
+    COPY --from=build --chown=10001:10001 /workspace/app.jar /app/app.jar
+    COPY --from=build --chown=10001:10001 /workspace/database/migrator/check-gds.sh /app/check-gds.sh
+    RUN chmod 0555 /app/check-gds.sh
+    USER 10001:10001
+    ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+x-business-service: &business-service
+  environment: *protected-service-environment
+  depends_on:
+    database-migrator:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+x-service-health: &service-health
+  interval: 10s
+  timeout: 5s
+  retries: 18
+  start_period: 30s
+
+services:
+  neo4j:
+    image: neo4j:2026.07.1-community
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:?Set NEO4J_USERNAME}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      CYPHER_SHELL_USERNAME: ${NEO4J_USERNAME:?Set NEO4J_USERNAME}
+      CYPHER_SHELL_PASSWORD: ${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      # Development convenience only; release/audit needs a packaged GDS image.
+      NEO4J_PLUGINS: '["graph-data-science"]'
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u \"$$CYPHER_SHELL_USERNAME\" -p \"$$CYPHER_SHELL_PASSWORD\" 'RETURN 1;' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+  database-migrator:
+    image: neo4flix/database-migrator:0.0.1
+    build: *migrator-build
+    command: ["migrate"]
+    environment: *service-environment
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: "no"
+
+  user-service:
+    <<: *business-service
+    environment: *user-service-environment
+    image: neo4flix/user-service:0.0.1
+    build:
+      <<: *service-build
+      args:
+        SERVICE_MODULE: user-service
+    healthcheck:
+      <<: *service-health
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+
+  movie-service:
+    <<: *business-service
+    environment:
+      <<: *protected-service-environment
+      NEO4FLIX_RECOMMENDATION_BASE_URL: http://recommendation-service:8084
+    image: neo4flix/movie-service:0.0.1
+    build:
+      <<: *service-build
+      args:
+        SERVICE_MODULE: movie-service
+    healthcheck:
+      <<: *service-health
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+
+  rating-service:
+    <<: *business-service
+    image: neo4flix/rating-service:0.0.1
+    build:
+      <<: *service-build
+      args:
+        SERVICE_MODULE: rating-service
+    healthcheck:
+      <<: *service-health
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+
+  recommendation-service:
+    <<: *business-service
+    image: neo4flix/recommendation-service:0.0.1
+    build:
+      <<: *service-build
+      args:
+        SERVICE_MODULE: recommendation-service
+    healthcheck:
+      <<: *service-health
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8084/actuator/health | grep -q '\"status\":\"UP\"'"]
+
+  web:
+    image: neo4flix/web:0.0.1
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      movie-service:
+        condition: service_healthy
+      rating-service:
+        condition: service_healthy
+      recommendation-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  neo4j-data:

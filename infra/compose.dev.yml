@@ -1,0 +1,19 @@
+services:
+  neo4j:
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+  user-service:
+    ports:
+      - "127.0.0.1:8081:8081"
+  movie-service:
+    environment:
+      NEO4FLIX_RECOMMENDATION_BASE_URL: http://recommendation-service:8084
+    ports:
+      - "127.0.0.1:8082:8082"
+  rating-service:
+    ports:
+      - "127.0.0.1:8083:8083"
+  recommendation-service:
+    ports:
+      - "127.0.0.1:8084:8084"
