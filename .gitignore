@@ -1,0 +1,16 @@
+.worktrees/
+.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+secrets/
+target/
+node_modules/
+.angular/cache/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+data/

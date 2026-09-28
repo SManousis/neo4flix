@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: user-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:change-me}
+
+server:
+  port: 8081
+  forward-headers-strategy: none
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+neo4flix:
+  rating-service:
+    url: ${NEO4FLIX_RATING_SERVICE_URL:http://localhost:8083}
+  security:
+    totp:
+      encryption-key: ${NEO4FLIX_TOTP_ENCRYPTION_KEY:}
+    allowed-origins: ${NEO4FLIX_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:8080}
+    rate-limit:
+      trusted-proxies: ${NEO4FLIX_AUTH_TRUSTED_PROXIES:}
+      requests: ${NEO4FLIX_AUTH_RATE_LIMIT_REQUESTS:10}
+      window-seconds: ${NEO4FLIX_AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
+      capacity: ${NEO4FLIX_AUTH_RATE_LIMIT_CAPACITY:10000}
+    jwt:
+      private-key: ${NEO4FLIX_JWT_PRIVATE_KEY:}
+      public-key: ${NEO4FLIX_JWT_PUBLIC_KEY:}
+      issuer: ${NEO4FLIX_JWT_ISSUER:neo4flix-user-service}
+      audience: ${NEO4FLIX_JWT_AUDIENCE:neo4flix-api}
+      access-token-ttl: ${NEO4FLIX_JWT_ACCESS_TOKEN_TTL:PT15M}
+    refresh-cookie:
+      name: ${NEO4FLIX_REFRESH_COOKIE_NAME:neo4flix_refresh}
+      secure: ${NEO4FLIX_REFRESH_COOKIE_SECURE:true}
+      http-only: true
+      same-site: ${NEO4FLIX_REFRESH_COOKIE_SAME_SITE:Strict}
+      path: ${NEO4FLIX_REFRESH_COOKIE_PATH:/api/v1/auth}
+    refresh-token:
+      ttl: ${NEO4FLIX_REFRESH_TOKEN_TTL:P30D}
+      bytes: ${NEO4FLIX_REFRESH_TOKEN_BYTES:32}
+    password:
+      minimum-length: 10
+      maximum-length: ${NEO4FLIX_PASSWORD_MAXIMUM_LENGTH:128}
+      bcrypt-strength: ${NEO4FLIX_BCRYPT_STRENGTH:12}

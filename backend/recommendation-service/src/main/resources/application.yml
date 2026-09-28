@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: recommendation-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:change-me}
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+neo4flix:
+  recommendation:
+    collaborative-weight: ${NEO4FLIX_RECOMMENDATION_COLLABORATIVE_WEIGHT:0.60}
+    content-weight: ${NEO4FLIX_RECOMMENDATION_CONTENT_WEIGHT:0.30}
+    popularity-weight: ${NEO4FLIX_RECOMMENDATION_POPULARITY_WEIGHT:0.10}
+    popularity-prior-count: ${NEO4FLIX_RECOMMENDATION_POPULARITY_PRIOR_COUNT:5.0}
+    minimum-overlap: ${NEO4FLIX_RECOMMENDATION_MINIMUM_OVERLAP:2}
+    peer-limit: ${NEO4FLIX_RECOMMENDATION_PEER_LIMIT:10}
+    candidate-limit: ${NEO4FLIX_RECOMMENDATION_CANDIDATE_LIMIT:50}
+    mature-rating-threshold: ${NEO4FLIX_RECOMMENDATION_MATURE_RATING_THRESHOLD:3}
+    max-page-size: ${NEO4FLIX_RECOMMENDATION_MAX_PAGE_SIZE:50}
+    share:
+      default-expiry-days: ${NEO4FLIX_RECOMMENDATION_SHARE_DEFAULT_EXPIRY_DAYS:30}
+      min-expiry-days: ${NEO4FLIX_RECOMMENDATION_SHARE_MIN_EXPIRY_DAYS:1}
+      max-expiry-days: ${NEO4FLIX_RECOMMENDATION_SHARE_MAX_EXPIRY_DAYS:365}
+  security:
+    jwt:
+      public-key: ${NEO4FLIX_JWT_PUBLIC_KEY:}
+      issuer: ${NEO4FLIX_JWT_ISSUER:neo4flix-user-service}
+      audience: ${NEO4FLIX_JWT_AUDIENCE:neo4flix-api}
